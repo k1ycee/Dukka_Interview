@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_editor/image_editor.dart';
+import 'package:task/core/constants/strings.dart';
 import 'package:task/core/util/image_preprocessor_isolate.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  ImagePreprocessorIsolate().initiate();
   runApp(const MyApp());
 }
 
@@ -63,7 +64,7 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
             else if (_savedImagePath.isNotEmpty)
               Column(
                 children: [
-                  Image.file(File(_savedImagePath)),
+                  Image.file(File(_savedImagePath)) ,
                   const SizedBox(height: 20),
                 ],
               )
@@ -76,8 +77,89 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          ImagePreprocessorIsolate().startImageProcessing();
+        onPressed: () async {
+          List<Option> editOptions = [
+            ColorOption(matrix: [
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0.5,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0.5,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ]),
+            ColorOption(matrix: [
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ]),
+            const RotateOption(180),
+            const ScaleOption(
+              100,
+              100,
+            ),
+            ColorOption(matrix: [
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0.2126,
+              0.7152,
+              0.0722,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0
+            ])
+          ];
+          final imageLinks =
+              List.generate(5, (index) => loremPicsumImageLink('$index'));
+          await for (final jsonData in ImagePreprocessorIsolate()
+              .sendAndReceive(imageLinks, editOptions)) { 
+            setState(() {
+              _savedImagePath = jsonData;
+              // imagePaths.add(jsonData);
+            });
+          }
         },
         tooltip: 'Download Image',
         child: const Icon(Icons.file_download),
