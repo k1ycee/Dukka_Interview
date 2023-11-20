@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_editor/image_editor.dart';
+// import 'package:intersperse/intersperse.dart';
 import 'package:task/core/constants/strings.dart';
 import 'package:task/core/util/image_preprocessor_isolate.dart';
 
@@ -33,68 +34,9 @@ class ImageDownloadScreen extends StatefulWidget {
 }
 
 class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
-  bool _downloading = false;
-  String _savedImagePath = '';
+  final StreamController<List<String>> imagestreamController =
+      StreamController<List<String>>();
   List<String> imagePaths = [];
-
-  final Stream<List<String>> images = (() {
-    List<Option> editOptions = [
-      ColorOption(matrix: [
-        2,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0.5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0.5,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0
-      ]),
-      ColorOption(
-          matrix: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0]),
-      const RotateOption(180),
-      const ScaleOption(
-        100,
-        100,
-      ),
-      ColorOption(matrix: [
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0.2126,
-        0.7152,
-        0.0722,
-        0,
-        0,
-        0,
-        0,
-        0,
-        1,
-        0
-      ])
-    ];
-    final imageLinks =
-        List.generate(5, (index) => loremPicsumImageLink('$index'));
-    return ImagePreprocessorIsolate().sendAndReceive(imageLinks, editOptions);
-  })();
 
   @override
   Widget build(BuildContext context) {
@@ -102,127 +44,43 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
       appBar: AppBar(
         title: const Text('Image Downloader'),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            if (_downloading)
-              const CircularProgressIndicator()
-            else if (imagePaths.isNotEmpty)
-              SizedBox(
-                height: 600,
-                width: double.infinity,
-                child: ListView(
-                  children: [
-                    ...imagePaths.map(
-                      (e) => Image.file(
-                        File(e),
+      body: StreamBuilder<List<String>>(
+        stream: imagestreamController.stream,
+        builder: (context, snapshot) {
+          switch (snapshot.connectionState) {
+            case ConnectionState.active:
+              return ListView.builder(
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Container(
+                      height: 300,
+                      decoration: BoxDecoration(
+                          color: Colors.deepPurple.withOpacity(0.2)),
+                      child: Image.file(
+                        File(snapshot.data![index]),
                       ),
                     ),
-                    // const SizedBox(height: 20),
-                  ],
-                ),
-              )
-            else
-              const Text(
-                'Press the button to download an image!',
-                textAlign: TextAlign.center,
-              ),
-          ],
-        ),
+                  );
+                },
+              );
+            default:
+              return const Center(
+                child: Text('Please click the download button below.'),
+              );
+          }
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          List<Option> editOptions = [
-            ColorOption(matrix: [
-              2,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0.5,
-              0,
-              0,
-              0,
-              0,
-              0,
-              0.5,
-              0,
-              0,
-              0,
-              0,
-              0,
-              1,
-              0
-            ]),
-            ColorOption(matrix: [
-              1,
-              0,
-              0,
-              0,
-              0,
-              0,
-              1,
-              0,
-              0,
-              0,
-              0,
-              0,
-              2,
-              0,
-              0,
-              0,
-              0,
-              0,
-              1,
-              0
-            ]),
-            const RotateOption(180),
-            const ScaleOption(
-              100,
-              100,
-            ),
-            ColorOption(matrix: [
-              0.2126,
-              0.7152,
-              0.0722,
-              0,
-              0,
-              0.2126,
-              0.7152,
-              0.0722,
-              0,
-              0,
-              0.2126,
-              0.7152,
-              0.0722,
-              0,
-              0,
-              0,
-              0,
-              0,
-              1,
-              0
-            ])
-          ];
           final imageLinks =
               List.generate(5, (index) => loremPicsumImageLink('$index'));
 
-          // setState(() {
-          //   _downloading = true;
-          // });
-          // images
           await for (final jsonData in ImagePreprocessorIsolate()
               .sendAndReceive(imageLinks, editOptions)) {
-            print(jsonData.length);
-            setState(() {
-              imagePaths = jsonData;
-            });
+            imagestreamController.add(jsonData);
           }
-          // setState(() {
-          //   _downloading = false;
-          // });
         },
         tooltip: 'Download Image',
         child: const Icon(Icons.file_download),

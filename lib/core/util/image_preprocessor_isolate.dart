@@ -7,21 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:task/core/http_core.dart';
 
 class ImagePreprocessorIsolate {
-  // void startImageProcessing() async {
-
-  // }
-
-  // List<Option> editOptions = [
-  //   const FlipOption(horizontal: true, vertical: false),
-  //   const ClipOption(x: 0, y: 0, width: 1920, height: 1920),
-  //   const RotateOption(180),
-  //   const ScaleOption(
-  //     100,
-  //     100,
-  //   ),
-  //   ColorOption()
-  // ];
-
 // Spawns an isolate and asynchronously sends a list of imagelinks for it to
 // read and decode. Waits for the response containing the decoded JSON
 // before sending the next.
@@ -41,6 +26,8 @@ class ImagePreprocessorIsolate {
     // queue until they are accessed by `events.next`.
     final events = StreamQueue<dynamic>(p);
 
+
+
     // The first message from the spawned isolate is a SendPort. This port is
     // used to communicate with the spawned isolate.
     SendPort sendPort = await events.next;
@@ -59,13 +46,12 @@ class ImagePreprocessorIsolate {
           '$dir/image_${DateTime.now().millisecondsSinceEpoch}.png';
       // Add the downloaded image to File
       await File(imageProcessorFilePath).writeAsBytes(message);
-      // Add an Image editting option to the image   
+      // Add an Image editting option to the image
       editorOption.addOption(editOptions[imageLinks.indexOf(imageLink)]);
 
       // Take the downloaded Image and add an edit to it
       final newMessage = await ImageEditor.editFileImage(
           file: File(imageProcessorFilePath), imageEditorOption: editorOption);
-
 
       // Create a new file path to store the processed image
       String processedFilePath =
