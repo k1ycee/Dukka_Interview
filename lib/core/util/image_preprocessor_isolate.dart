@@ -27,9 +27,11 @@ class ImagePreprocessorIsolate {
 // before sending the next.
 //
 // Returns a stream that emits the JSON-decoded contents of each file.
-  Stream<String> sendAndReceive(
+  Stream<List<String>> sendAndReceive(
       List<String> imageLinks, List<Option> editOptions) async* {
     final editorOption = ImageEditorOption();
+
+    List<String> processedImages = [];
 
     final p = ReceivePort();
     await Isolate.spawn(_readAndParseJsonService, p.sendPort);
@@ -51,22 +53,31 @@ class ImagePreprocessorIsolate {
       Uint8List message = await events.next;
       // Create a file diretory
       String dir = (await getTemporaryDirectory()).path;
+
+      // Create a file path to store the downloaded image
       String imageProcessorFilePath =
           '$dir/image_${DateTime.now().millisecondsSinceEpoch}.png';
+      // Add the downloaded image to File
+      await File(imageProcessorFilePath).writeAsBytes(message);
+      // Add an Image editting option to the image   
       editorOption.addOption(editOptions[imageLinks.indexOf(imageLink)]);
 
-      await File(imageProcessorFilePath).writeAsBytes(message);
+      // Take the downloaded Image and add an edit to it
       final newMessage = await ImageEditor.editFileImage(
           file: File(imageProcessorFilePath), imageEditorOption: editorOption);
 
+
+      // Create a new file path to store the processed image
       String processedFilePath =
           '$dir/processed_image_${DateTime.now().millisecondsSinceEpoch}.png';
 
+      // Add the processed image to File
       final processedImage =
           await File(processedFilePath).writeAsBytes(newMessage!);
 
-      // Add the result to the stream returned by this async* function.
-      yield processedImage.path;
+      processedImages.add(processedImage.path);
+      // Add the processedImag to the stream returned by this async* function.
+      yield processedImages;
     }
     // Send a signal to the spawned isolate indicating that it should exit.
     sendPort.send(null);
@@ -76,12 +87,12 @@ class ImagePreprocessorIsolate {
   }
 
 // The entrypoint that runs on the spawned isolate. Receives messages from
-// the main isolate, reads the contents of the file, decodes the JSON, and
-// sends the result back to the main isolate.
+// the main isolate, takes the list of image links, downloades the image and returns a Uint8List,
+// back to the main isolate.
   Future<void> _readAndParseJsonService(SendPort p) async {
     print('Spawned isolate started.');
 
-    // Send a SendPort to the main isolate so that it can send JSON strings to
+    // Send a SendPort to the main isolate so that it can send List of image links to
     // this isolate.
     final commandPort = ReceivePort();
     p.send(commandPort.sendPort);
@@ -89,13 +100,13 @@ class ImagePreprocessorIsolate {
     // Wait for messages from the main isolate.
     await for (final message in commandPort) {
       if (message is String) {
-        // Read and decode the file.
+        // Read and decode the string.
         final contents = await ImageClient().downloadImage(message);
         // Send the result to the main isolate.
         p.send(contents);
       } else if (message == null) {
         // Exit if the main isolate sends a null message, indicating there are no
-        // more files to read and parse.
+        // more images to download.
         break;
       }
     }

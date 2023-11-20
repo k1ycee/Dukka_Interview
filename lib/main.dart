@@ -37,17 +37,64 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
   String _savedImagePath = '';
   List<String> imagePaths = [];
 
-  // Future<void> _downloadImage() async {
-  //   setState(() {
-  //     _downloading = true;
-  //   });
-
-  //   _savedImagePath = await ImageClient().downloadImage();
-  //   imagePaths.add(_savedImagePath);
-  //   setState(() {
-  //     _downloading = false;
-  //   });
-  // }
+  final Stream<List<String>> images = (() {
+    List<Option> editOptions = [
+      ColorOption(matrix: [
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.5,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ]),
+      ColorOption(
+          matrix: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 1, 0]),
+      const RotateOption(180),
+      const ScaleOption(
+        100,
+        100,
+      ),
+      ColorOption(matrix: [
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0.2126,
+        0.7152,
+        0.0722,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ])
+    ];
+    final imageLinks =
+        List.generate(5, (index) => loremPicsumImageLink('$index'));
+    return ImagePreprocessorIsolate().sendAndReceive(imageLinks, editOptions);
+  })();
 
   @override
   Widget build(BuildContext context) {
@@ -61,12 +108,20 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
           children: <Widget>[
             if (_downloading)
               const CircularProgressIndicator()
-            else if (_savedImagePath.isNotEmpty)
-              Column(
-                children: [
-                  Image.file(File(_savedImagePath)) ,
-                  const SizedBox(height: 20),
-                ],
+            else if (imagePaths.isNotEmpty)
+              SizedBox(
+                height: 600,
+                width: double.infinity,
+                child: ListView(
+                  children: [
+                    ...imagePaths.map(
+                      (e) => Image.file(
+                        File(e),
+                      ),
+                    ),
+                    // const SizedBox(height: 20),
+                  ],
+                ),
               )
             else
               const Text(
@@ -153,13 +208,21 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
           ];
           final imageLinks =
               List.generate(5, (index) => loremPicsumImageLink('$index'));
+
+          // setState(() {
+          //   _downloading = true;
+          // });
+          // images
           await for (final jsonData in ImagePreprocessorIsolate()
-              .sendAndReceive(imageLinks, editOptions)) { 
+              .sendAndReceive(imageLinks, editOptions)) {
+            print(jsonData.length);
             setState(() {
-              _savedImagePath = jsonData;
-              // imagePaths.add(jsonData);
+              imagePaths = jsonData;
             });
           }
+          // setState(() {
+          //   _downloading = false;
+          // });
         },
         tooltip: 'Download Image',
         child: const Icon(Icons.file_download),
