@@ -1,102 +1,101 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
-import 'package:async/async.dart';
 import 'package:flutter/services.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_editor/image_editor.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:task/core/http_core.dart';
 
 class ImagePreprocessorIsolate {
+  final StreamController<List<String>> _imagestreamController =
+      StreamController<List<String>>.broadcast();
+
+  Stream<List<String>> get imageStream => _imagestreamController.stream;
 // Spawns an isolate and asynchronously sends a list of imagelinks for it to
 // read and decode. Waits for the response containing the decoded JSON
 // before sending the next.
 //
 // Returns a stream that emits the JSON-decoded contents of each file.
-  Stream<List<String>> sendAndReceive(
-      List<String> imageLinks, List<Option> editOptions) async* {
-    final editorOption = ImageEditorOption();
-
+  void sendAndReceive(List<String> imageLinks, List<Option> editOptions) async {
     List<String> processedImages = [];
+    List<String> editOptions = [
+      'billboard',
+      'edgeGlow',
+      'bump',
+      'dotscreen',
+      ''
+    ];
 
-    final p = ReceivePort();
-    await Isolate.spawn(_readAndParseJsonService, p.sendPort);
+    // Create a file diretory
+    String dir = (await getTemporaryDirectory()).path;
 
-    // Convert the ReceivePort into a StreamQueue to receive messages from the
-    // spawned isolate using a pull-based interface. Events are stored in this
-    // queue until they are accessed by `events.next`.
-    final events = StreamQueue<dynamic>(p);
-
-
-
-    // The first message from the spawned isolate is a SendPort. This port is
-    // used to communicate with the spawned isolate.
-    SendPort sendPort = await events.next;
-
-    for (var imageLink in imageLinks) {
-      // Send the next imagelink to be read and parsed
-      sendPort.send(imageLink);
-
-      // Receive the downloaded image
-      Uint8List message = await events.next;
-      // Create a file diretory
-      String dir = (await getTemporaryDirectory()).path;
-
-      // Create a file path to store the downloaded image
-      String imageProcessorFilePath =
-          '$dir/image_${DateTime.now().millisecondsSinceEpoch}.png';
-      // Add the downloaded image to File
-      await File(imageProcessorFilePath).writeAsBytes(message);
-      // Add an Image editting option to the image
-      editorOption.addOption(editOptions[imageLinks.indexOf(imageLink)]);
-
-      // Take the downloaded Image and add an edit to it
-      final newMessage = await ImageEditor.editFileImage(
-          file: File(imageProcessorFilePath), imageEditorOption: editorOption);
-
-      // Create a new file path to store the processed image
-      String processedFilePath =
-          '$dir/processed_image_${DateTime.now().millisecondsSinceEpoch}.png';
-
-      // Add the processed image to File
-      final processedImage =
-          await File(processedFilePath).writeAsBytes(newMessage!);
-
-      processedImages.add(processedImage.path);
-      // Add the processedImag to the stream returned by this async* function.
-      yield processedImages;
+    for (int index = 0; index < imageLinks.length; index++) {
+      final p = ReceivePort();
+      Isolate.spawn(downloadImageIsolate, [
+        dir,
+        imageLinks[index],
+        p.sendPort,
+      ]).then((value) async {
+        final imagePath = await p.first as String;
+        processedImages.add(imagePath);
+        _imagestreamController.sink.add(processedImages);
+        final processorPort = ReceivePort();
+        Isolate.spawn(imageProcessor, [
+          dir,
+          imagePath,
+          processorPort.sendPort,
+          editOptions[index]
+        ]).then((value) async {
+          final imagePath = await processorPort.first as String;
+          processedImages[index] = imagePath;
+          _imagestreamController.sink.add(processedImages);
+        });
+      });
     }
-    // Send a signal to the spawned isolate indicating that it should exit.
-    sendPort.send(null);
-
-    // Dispose the StreamQueue.
-    await events.cancel();
   }
 
 // The entrypoint that runs on the spawned isolate. Receives messages from
 // the main isolate, takes the list of image links, downloades the image and returns a Uint8List,
 // back to the main isolate.
-  Future<void> _readAndParseJsonService(SendPort p) async {
-    print('Spawned isolate started.');
+  static void downloadImageIsolate(List<dynamic> args) async {
+    final contents = await ImageClient().downloadImage(args[1]);
+    // Create a file path to store the downloaded image
+    String imageProcessorFilePath =
+        '${args[0]}/image_${DateTime.now().millisecondsSinceEpoch}.png';
+    // Add the downloaded image to File
+    await File(imageProcessorFilePath).writeAsBytes(contents);
+    Isolate.exit(args[2], imageProcessorFilePath);
+  }
 
-    // Send a SendPort to the main isolate so that it can send List of image links to
-    // this isolate.
-    final commandPort = ReceivePort();
-    p.send(commandPort.sendPort);
+  static void imageProcessor(List<dynamic> args) async {
+    Uint8List bytes = File(args[1]).readAsBytesSync();
+    // Take the downloaded Image and add an edit to it
+    final newMessage = switch (args[3]) {
+      'billboard' => img.billboard(
+          img.decodeImage(bytes)!,
+        ),
+      'edgeGlow' => img.edgeGlow(
+          img.decodeImage(bytes)!,
+        ),
+      'bump' => img.bumpToNormal(
+          img.decodeImage(bytes)!,
+        ),
+      'dotscreen' => img.dotScreen(
+          img.decodeImage(bytes)!,
+        ),
+      _ => img.colorHalftone(
+          img.decodeImage(bytes)!,
+        )
+    };
 
-    // Wait for messages from the main isolate.
-    await for (final message in commandPort) {
-      if (message is String) {
-        // Read and decode the string.
-        final contents = await ImageClient().downloadImage(message);
-        // Send the result to the main isolate.
-        p.send(contents);
-      } else if (message == null) {
-        // Exit if the main isolate sends a null message, indicating there are no
-        // more images to download.
-        break;
-      }
-    }
+    String imageProcessorFilePath =
+        '${args[0]}/processed_${DateTime.now().millisecondsSinceEpoch}.png';
 
-    Isolate.exit();
+    // Add the processed image to File
+    final processedImage = await File(imageProcessorFilePath)
+        .writeAsBytes(img.encodePng(newMessage));
+
+    Isolate.exit(args[2], processedImage.path);
   }
 }

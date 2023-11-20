@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-// import 'package:intersperse/intersperse.dart';
 import 'package:task/core/constants/strings.dart';
 import 'package:task/core/util/image_preprocessor_isolate.dart';
 
@@ -34,10 +32,8 @@ class ImageDownloadScreen extends StatefulWidget {
 }
 
 class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
-  final StreamController<List<String>> imagestreamController =
-      StreamController<List<String>>();
-  List<String> imagePaths = [];
-
+  final imageStream = ImagePreprocessorIsolate();
+  bool isLoading = false;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,7 +41,8 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
         title: const Text('Image Downloader'),
       ),
       body: StreamBuilder<List<String>>(
-        stream: imagestreamController.stream,
+        initialData: null,
+        stream: imageStream.imageStream,
         builder: (context, snapshot) {
           switch (snapshot.connectionState) {
             case ConnectionState.active:
@@ -65,6 +62,10 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
                   );
                 },
               );
+            case ConnectionState.waiting:
+              return const Center(
+                child: Text('Please click the download button below.'),
+              );
             default:
               return const Center(
                 child: Text('Please click the download button below.'),
@@ -74,13 +75,16 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
+          setState(() {
+            isLoading = true;
+          });
           final imageLinks =
               List.generate(5, (index) => loremPicsumImageLink('$index'));
 
-          await for (final jsonData in ImagePreprocessorIsolate()
-              .sendAndReceive(imageLinks, editOptions)) {
-            imagestreamController.add(jsonData);
-          }
+          imageStream.sendAndReceive(imageLinks, editOptions);
+          setState(() {
+            isLoading = false;
+          });
         },
         tooltip: 'Download Image',
         child: const Icon(Icons.file_download),
