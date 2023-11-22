@@ -36,7 +36,7 @@ class ImagePreprocessorIsolate {
 
     for (int index = 0; index < imageLinks.length; index++) {
       final downloadReceivePort = ReceivePort();
-    Isolate.spawn(downloadImageIsolate, [
+    await Isolate.spawn(downloadImageIsolate, [
         downloadDirectory,
         imageLinks[index],
         downloadReceivePort.sendPort,

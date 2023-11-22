@@ -102,7 +102,7 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
           final imageLinks =
               List.generate(5, (index) => loremPicsumImageLink('$index'));
 
-          imageStream.sendAndReceive(imageLinks, editOptions);
+         await imageStream.sendAndReceive(imageLinks, editOptions);
           setState(() {
             isLoading = false;
           });
