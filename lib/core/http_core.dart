@@ -13,7 +13,6 @@ class ImageClient {
   
 
 //Download file from url
-
   Future<Uint8List> downloadImage(String imageUrl, [Function(int, int)? onReceiveProgress]) async {
     try {
       Response response = await dio.get(

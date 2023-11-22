@@ -65,12 +65,15 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
                           color: Colors.deepPurple.withOpacity(0.2)),
                       child: imageInformation.imagePath == null
                           ? Center(
-                              child: LinearProgressIndicator(
-                                value: imageInformation.downloadProgress,
-                                color: Colors.white,
-                                valueColor: const AlwaysStoppedAnimation(
-                                    Colors.amberAccent),
-                                // semanticsLabel: 'Linear progress indicator',
+                              child: SizedBox(
+                                width: 30,
+                                child: LinearProgressIndicator(
+                                  value: imageInformation.downloadProgress,
+                                  color: Colors.white,
+                                  valueColor: const AlwaysStoppedAnimation(
+                                      Colors.deepPurple),
+                                  // semanticsLabel: 'Linear progress indicator',
+                                ),
                               ),
                             )
                           : Stack(
@@ -128,21 +131,9 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          //   setState(() {
-          //     isLoading = true;
-          //   });
-
           final imageLinks =
               List.generate(5, (index) => loremPicsumImageLink('$index'));
-
-          imagePreprocessor.sendAndReceive(imageLinks);
-          // setState(() {
-          //   isLoading = false;
-          // });
-
-          // await for (final jsonData in sendAndReceive2(imageLinks)) {
-          //   print('Download progress $jsonData ');
-          // }
+          imagePreprocessor.initiateDownload(imageLinks);
         },
         tooltip: 'Download Image',
         child: const Icon(Icons.file_download),
