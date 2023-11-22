@@ -41,7 +41,6 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
         title: const Text('Image Downloader'),
       ),
       body: StreamBuilder<List<String>>(
-        initialData: null,
         stream: imageStream.imageStream,
         builder: (context, snapshot) {
           switch (snapshot.connectionState) {
@@ -62,10 +61,31 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
                   );
                 },
               );
-            case ConnectionState.waiting:
-              return const Center(
-                child: Text('Please click the download button below.'),
+            case ConnectionState.done:
+              return ListView.builder(
+                itemCount: snapshot.data!.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Container(
+                      height: 300,
+                      decoration: BoxDecoration(
+                          color: Colors.deepPurple.withOpacity(0.2)),
+                      child: Image.file(
+                        File(snapshot.data![index]),
+                      ),
+                    ),
+                  );
+                },
               );
+            case ConnectionState.waiting:
+              return isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : const Center(
+                      child: Text('Please click the download button below.'),
+                    );
             default:
               return const Center(
                 child: Text('Please click the download button below.'),
@@ -78,6 +98,7 @@ class _ImageDownloadScreenState extends State<ImageDownloadScreen> {
           setState(() {
             isLoading = true;
           });
+
           final imageLinks =
               List.generate(5, (index) => loremPicsumImageLink('$index'));
 

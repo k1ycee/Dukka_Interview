@@ -1,16 +1,16 @@
-# task
+# Dukka Interview
 
-A new Flutter project.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+This project has no flavors:
 
-A few resources to get you started if this is your first Flutter project:
+To run the project either use the launch configuration in VSCode/Android Studio or use the following commands:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```sh
+# Run the app
+$ flutter run
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```
+
+_\*Task works on iOS and Android_
