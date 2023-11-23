@@ -4,7 +4,7 @@ import 'dart:isolate';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
-import 'package:task/core/http_core.dart';
+import 'package:task/core/image_client.dart';
 import 'package:task/core/util/model/download_model.dart';
 
 class ImagePreprocessor {
